@@ -5,5 +5,11 @@ api-version: 1.15
 depend:
   - Citizens
 commands:
-  summonnpc:
-    description: Crea un npc con IA
+  summonbuddy:
+    description: Crea un npc
+    usage: /summonnpc <nombre>
+    permission: aibuddycraft.summonnp
+  buddy:
+    description: Edita el npc
+    usage: /buddy <edit|skin|remove> <nombre> [argumentos]
+    permission: aibuddycraft.buddy
