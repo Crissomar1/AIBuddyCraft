@@ -1,0 +1,9 @@
+name: aibuddycraft
+main: com.crissomar.aibuddycraft.Plugin
+version: 0.1
+api-version: 1.15
+depend:
+  - Citizens
+commands:
+  summonnpc:
+    description: Crea un npc con IA
