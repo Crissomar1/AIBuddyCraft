@@ -55,14 +55,16 @@ public class BuddyEditCommand implements CommandExecutor, TabCompleter{
                     return true;
                 }
                 Plugin.LOGGER.info("setting role to " + args[2]);
-                String role = args[2];
+                // role is text from the third argument onwards
+                //String role = args[2];
+                String role = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
                 if(npc.hasTrait(ConvoTrait.class)){
                     Plugin.LOGGER.info("npc has convo trait");
                     npc.removeTrait( ConvoTrait.class);
-                    npc.addTrait(new ConvoTrait(role));
+                    npc.addTrait(new ConvoTrait(npc.getName(),role));
                 }else{
                     Plugin.LOGGER.info("npc does not have convo trait");
-                    npc.addTrait(new ConvoTrait(role));
+                    npc.addTrait(new ConvoTrait(npc.getName(),role));
                 }
                 p.sendMessage("Role set to " + role);
                 return true;

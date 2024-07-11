@@ -20,11 +20,13 @@ public class NPCListeners implements Listener {
 
     @EventHandler
     public void onChatMessage(AsyncPlayerChatEvent e) {
+        //Plugin.LOGGER.info("Said: "+e.getMessage());
 
         //Get all the npcs near the player
         for (NPC npc : CitizensAPI.getNPCRegistry().sorted()) {
-
-            if (npc.getEntity() == null || npc.hasTrait(ConvoTrait.class)){
+            //Plugin.LOGGER.info("Search NPC: "+npc.getName());
+            if (npc.getEntity() == null || !npc.hasTrait(ConvoTrait.class)){
+                //Plugin.LOGGER.info("No trait: "+npc.getName());
                 continue;
             }
 
@@ -32,13 +34,15 @@ public class NPCListeners implements Listener {
 
             //If the player is talking to the NPC but is not within 20 blocks, stop the conversation
             if (npc.getEntity().getLocation().distance(e.getPlayer().getLocation()) > 20){
+                //Plugin.LOGGER.info("Far NPC: "+npc.getName());
                 continue;
             }else{
                 //get what the player typed in chat
                 trait.addMessage(e.getPlayer().getName(),e.getMessage());
-
+                //Plugin.LOGGER.info("Reached NPC: "+npc.getName());
                 CompletableFuture.runAsync(() -> {
                     //Use OpenAI to get a response
+                    //Plugin.LOGGER.info("Answer NPC: "+npc.getName());
                     trait.getResponse();
                 });
             }

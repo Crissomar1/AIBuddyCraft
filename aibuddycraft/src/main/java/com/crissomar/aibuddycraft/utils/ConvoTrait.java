@@ -1,46 +1,74 @@
 package com.crissomar.aibuddycraft.utils;
 
 import com.crissomar.aibuddycraft.Plugin;
+import com.crissomar.aibuddycraft.utils.ChatMessage;
 import net.citizensnpcs.api.ai.speech.SpeechContext;
+import net.citizensnpcs.api.exception.NPCLoadException;
 import net.citizensnpcs.api.trait.Trait;
-import com.theokanning.openai.service.OpenAiService;
-import com.theokanning.openai.completion.chat.*;
+import net.citizensnpcs.api.util.DataKey;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.time.Duration;
 
 
+@SuppressWarnings("unused")
 public class ConvoTrait extends Trait {
+    private final Plugin plugin = Plugin.getPlugin(Plugin.class);
     private String role;
     //create a list of every message to create a history of the conversation
     private List<ChatMessage> conversation = new ArrayList<>();
 
-    public ConvoTrait(String role) {
+    public ConvoTrait() {
+        super("convotrait");
+    }
+
+    public ConvoTrait(String name,String role) {
         super("convotrait");
         
-        Plugin.LOGGER.info("Creating ConvoTrait");
-        this.role = role;
+        //Plugin.LOGGER.info("Creating ConvoTrait");
+        this.role = "Vas a rolear en un mundo de minecraft como acompañante de juego,"+
+                " Limita tu conocimiento al mundo de minecraft y no cambies de rol bajo ninguna circunstancia,"+ 
+                " daras respuestas muy breves, los nombres de las personas estan entre <>: Eres "+name+" y eres " + role;
         //add the role to the conversation
-        this.conversation.add(new ChatMessage("Admin",role));
+        this.conversation.add(new ChatMessage("system",role));
         
-        Plugin.LOGGER.info(this.conversation.toString());
+        Plugin.LOGGER.info(this.conversation.get(0).getMessage());
     }
 
     public void reset(){
         this.conversation.clear();
-        this.conversation.add(new ChatMessage("Admin",role));
+        this.conversation.add(new ChatMessage("system",role));
     }
 
     public void converse(String message) {
-        npc.getDefaultSpeechController().speak(new SpeechContext( message));
+        //Send a message in the chat from server
+        //Plugin.LOGGER.info("Conversando: "+message);
+        //si el mensaje tiene <name> al inicio quitalo <name>
+        if(  message.startsWith("<"+npc.getName()+">") ){
+            message = message.substring(npc.getName().length()+2);
+        }
+        //remplace
+        message = message.replace("\n"," ");
+        message = message.replace("\r"," ");
+        message = message.replace("\t"," ");
+        plugin.getServer().broadcastMessage("<"+npc.getName()+"> "+message);
         //add the message to the conversation
-        this.conversation.add(new ChatMessage("AI",message));
+        if(conversation.size() > 10){
+            conversation.remove(1);
+            if (conversation.get(1).getSender().equals("assistant")) {
+                conversation.remove(1);
+            }
+        }
+        if (conversation.size()!=1) {
+            this.conversation.add(new ChatMessage("assistant","<"+npc.getName()+"> "+message));
+        }
+    
     }
 
     @Override
     public void onSpawn() {
         super.onSpawn();
-        converse("Hello! I'm "+npc.getName()+"!");
+        converse("Hola soy "+npc.getName()+"!");
     }
 
     @Override
@@ -57,29 +85,36 @@ public class ConvoTrait extends Trait {
 
     public void addMessage(String player,String message){
         //Add the message to the conversation with day and time and the player's name
-        String date = java.time.LocalDate.now().toString();
-        String time = java.time.LocalTime.now().toString();
-        this.conversation.add(new ChatMessage("player","["+date+time+"]["+player+"] "+message+"\n"));
+        this.conversation.add(new ChatMessage("user","<"+player+"> "+message));
     }
     public void getResponse(){
 
         //Use OpenAI to get a response from GPT-3
-        String apikey = Plugin.OPENAI_API_KEY;
-        OpenAiService service = new OpenAiService(apikey, Duration.ofSeconds(0));
-        ChatCompletionRequest request = ChatCompletionRequest
-            .builder()
-            .model(Plugin.OPENAI_MODEL)
-            .messages(conversation)
-            .maxTokens(Integer.parseInt(Plugin.OPENAI_MAX_TOKENS))
-            .temperature(Double.parseDouble(Plugin.OPENAI_TEMPERATURE))
-            .topP(Double.parseDouble(Plugin.OPENAI_TOP_P))
-            .frequencyPenalty(Double.parseDouble(Plugin.OPENAI_FREQUENCY_PENALTY))
-            .presencePenalty(Double.parseDouble(Plugin.OPENAI_PRESENCE_PENALTY))
-            .build();
+        //Plugin.LOGGER.info("generando respuesta");
+        String response = Plugin.openAIChatCompletioner.chat(this.conversation);
+        //Plugin.LOGGER.info(response);
+        //Send the response to the player
+        converse(response);
 
-        var choices = service.createChatCompletion(request).getChoices();
-        var response = choices.get(0).toString(); //what the AI responds with
-        this.converse(response.toString());
+    }
+
+    
+
+    @Override
+    public void save(DataKey key) {
+        key.setString("role", role);
+        //save the conversation with number of messages
+        key.setInt("messages",conversation.size());
+        for (int i = 0; i < conversation.size(); i++) {
+            key.setString("messages.message"+i,conversation.get(i).getMessage());
+            key.setString("messages.sender"+i,conversation.get(i).getSender());
+        }
+    }
+
+    @Override
+    public void load(DataKey key) throws NPCLoadException {
+        role = key.getString("role");
+        this.conversation.add(new ChatMessage("system",role));
     }
 }
 
